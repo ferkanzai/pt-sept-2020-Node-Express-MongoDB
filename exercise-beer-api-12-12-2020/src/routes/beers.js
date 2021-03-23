@@ -1,37 +1,45 @@
-const { ifError } = require("assert");
-const express = require("express");
-const fs = require("fs");
+const { ifError } = require('assert');
+const express = require('express');
+const fs = require('fs');
 const router = express.Router();
-const { BEERS_DB } = require("../constants");
+const { BEERS_DB, ERROR_500 } = require('../constants');
 
-const getBeersList = (beers_db) => JSON.parse(fs.readFileSync(beers_db))
+const getBeersList = (beers_db) => JSON.parse(fs.readFileSync(beers_db));
 
-router.get("/", async (req, res) => {
-  let value = "";
-  let msg = "";
+
+router.get('/', async (req, res) => {
+  let value = '';
+  let msg = '';
   try {
-    const beersJson = await getBeersList(BEERS_DB)
+    const beersJson = await getBeersList(BEERS_DB);
+    const beersLength = beersJson.length;
     let beers = beersJson.slice(0, 25);
 
     const queryParams = req.query;
     const queryKeys = Object.keys(queryParams);
 
     if (queryParams) {
+      const { per_page, page } = queryParams;
+      if (!page) {
+        console.log('error');
+      }
       for (key of queryKeys) {
         value = queryParams[key];
         if (!value) {
-          msg = "Value is empty";
+          msg = 'Value is empty';
           throw new Error('empty_value');
         }
-        if (key === "per_page") {
+        if (key === 'per_page') {
           // console.log(value)
           if (value < 81 && value > 0) {
             // console.log(true)
             beers = beersJson.slice(0, value);
           } else {
-            msg = "Must be a number between 0 and 80";
+            msg = 'Must be a number between 0 and 80';
             throw new Error('bad_value');
           }
+        } else if (key === 'page') {
+          // no op
         }
       }
     }
@@ -45,10 +53,10 @@ router.get("/", async (req, res) => {
     if (msg) {
       res.status(400).json({
         success: false,
-        message: "Invalid query params",
+        message: 'Invalid query params',
         info: [
           {
-            location: "query",
+            location: 'query',
             param: `${key}`,
             msg,
             value,
@@ -57,18 +65,15 @@ router.get("/", async (req, res) => {
       });
     }
 
-    console.error("> error:", error.message);
-    return res.status(500).json({
-      success: false,
-      message: "something went wrong",
-    });
+    console.error('> error:', error.message);
+    return res.status(500).json(ERROR_500);
   }
 });
 
-router.get("/random", async (req, res) => {
+router.get('/random', async (req, res) => {
   try {
-    const beersJson = await getBeersList(BEERS_DB)
-    const random = ~~(Math.random(beersJson.length) * beersJson.length);
+    const beersJson = await getBeersList(BEERS_DB);
+    const random = ~~(Math.random() * beersJson.length);
 
     const singleBeer = beersJson.filter((beer) => beer.id === random);
 
@@ -77,17 +82,14 @@ router.get("/random", async (req, res) => {
       data: singleBeer,
     });
   } catch (error) {
-    console.error("> error:", error.message);
-    res.status(500).json({
-      success: false,
-      message: "something went wrong",
-    });
+    console.error('> error:', error.message);
+    res.status(500).json(ERROR_500);
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const beersJson = await getBeersList(BEERS_DB)
+    const beersJson = await getBeersList(BEERS_DB);
     const id = Number(req.params.id);
     let singleBeer = [];
     try {
@@ -98,7 +100,7 @@ router.get("/:id", async (req, res) => {
     } catch (error) {
       res.status(404).json({
         success: false,
-        error: "Not Found",
+        error: 'Not Found',
         message: `No beer found with ID ${id}`,
       });
     }
@@ -109,11 +111,8 @@ router.get("/:id", async (req, res) => {
       data: singleBeer,
     });
   } catch {
-    console.error("> error:", error.message);
-    res.status(500).json({
-      success: false,
-      message: "something went wrong",
-    });
+    console.error('> error:', error.message);
+    res.status(500).json(ERROR_500);
   }
 });
 
